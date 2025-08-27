@@ -1,4 +1,11 @@
 export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig()
+  
+  // Initialize Anthropic client
+  const anthropic = new (await import('@anthropic-ai/sdk')).default({
+    apiKey: config.anthropicApiKey
+  })
+  
   const body = await readBody(event)
   const { question, userId } = body
   
@@ -13,34 +20,74 @@ export default defineEventHandler(async (event) => {
     // Get relevant compliance documents (mock data for now)
     const relevantDocs = await getRelevantDocuments(question)
     
-    // Mock response for testing - replace with actual Anthropic API later
-    const mockAnswer = generateMockAnswer(question, relevantDocs)
+    // Create context from compliance documents
+    const context = relevantDocs.map(doc => 
+      `Document: ${doc.title} (v${doc.version})\n${doc.sections.map(s => s.content).join('\n')}`
+    ).join('\n\n')
+
+    const systemPrompt = `You are a corporate compliance assistant. Your role is to provide accurate, helpful answers to compliance questions based ONLY on the provided company policies and procedures.
+
+CRITICAL INSTRUCTIONS:
+1. Answer ONLY based on the provided compliance documents
+2. Always cite specific policy sections (e.g., "According to Security Policy v2, Section 5.1...")
+3. If information is not in the provided documents, state clearly that you cannot answer
+4. Be concise but thorough
+5. Highlight any prohibited actions clearly
+6. Suggest approved alternatives when applicable
+
+Here are the relevant compliance documents:
+${context}`
+
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1000,
+      temperature: 0.1,
+      system: systemPrompt,
+      messages: [
+        {
+          role: 'user',
+          content: question
+        }
+      ]
+    })
+
+    const answer = response.content[0].type === 'text' ? response.content[0].text : ''
     
     // Calculate confidence based on document relevance
-    const confidence = calculateConfidence(question, relevantDocs, mockAnswer)
+    const confidence = calculateConfidence(question, relevantDocs, answer)
     
     // Log the Q&A interaction for audit
     await logQAInteraction(event, {
       userId,
       question,
-      answer: mockAnswer,
+      answer,
       confidence,
       sources: relevantDocs
     })
 
     return {
-      answer: mockAnswer,
+      answer,
       confidence,
       sources: relevantDocs,
       timestamp: new Date().toISOString()
     }
     
   } catch (error) {
-    console.error('Chat API Error:', error)
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'Failed to process compliance question'
-    })
+    console.error('Claude API Error:', error)
+    
+    // Fallback to mock response if API fails
+    const relevantDocs = await getRelevantDocuments(question)
+    const fallbackAnswer = generateMockAnswer(question, relevantDocs)
+    const confidence = calculateConfidence(question, relevantDocs, fallbackAnswer)
+    
+    console.log('Using fallback response due to API error')
+    
+    return {
+      answer: fallbackAnswer + '\n\n*Note: This is a fallback response due to API connectivity issues.*',
+      confidence,
+      sources: relevantDocs,
+      timestamp: new Date().toISOString()
+    }
   }
 })
 
