@@ -48,6 +48,14 @@
               >
                 Admin
               </NuxtLink>
+              <NuxtLink 
+                v-if="authStore.isAdmin || authStore.hasComplianceAccess" 
+                to="/admin/documents" 
+                class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+                active-class="text-blue-600 font-semibold"
+              >
+                Manage Documents
+              </NuxtLink>
             </nav>
           </div>
 

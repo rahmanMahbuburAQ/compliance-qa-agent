@@ -1,12 +1,11 @@
 import { defineStore } from 'pinia'
-import type { ComplianceDocument } from '~/types'
 
 export const useDocumentsStore = defineStore('documents', () => {
-  const documents = ref<ComplianceDocument[]>([])
+  const documents = ref([])
   const isLoading = ref(false)
-  const error = ref<string | null>(null)
-  const currentCategory = ref<string>('all')
-  const searchQuery = ref<string>('')
+  const error = ref(null)
+  const currentCategory = ref('all')
+  const searchQuery = ref('')
 
   const categories = computed(() => {
     const cats = new Set(documents.value.map(doc => doc.category))
@@ -51,14 +50,11 @@ export const useDocumentsStore = defineStore('documents', () => {
         searchQuery.value = params.search
       }
 
-      const { data } = await $fetch<{
-        documents: ComplianceDocument[]
-        total: number
-      }>(`/api/documents?${query.toString()}`)
+      const response = await $fetch(`/api/documents?${query.toString()}`)
 
-      documents.value = data.documents
+      documents.value = response.documents
       
-    } catch (err: any) {
+    } catch (err) {
       error.value = err.data?.message || 'Failed to fetch documents'
       console.error('Documents fetch error:', err)
     } finally {
@@ -66,11 +62,11 @@ export const useDocumentsStore = defineStore('documents', () => {
     }
   }
 
-  const getDocumentById = (id: string): ComplianceDocument | undefined => {
+  const getDocumentById = (id) => {
     return documents.value.find(doc => doc.id === id)
   }
 
-  const searchDocuments = async (query: string) => {
+  const searchDocuments = async (query) => {
     searchQuery.value = query
     await fetchDocuments({ 
       category: currentCategory.value, 
@@ -78,7 +74,7 @@ export const useDocumentsStore = defineStore('documents', () => {
     })
   }
 
-  const filterByCategory = async (category: string) => {
+  const filterByCategory = async (category) => {
     currentCategory.value = category
     await fetchDocuments({ 
       category, 
@@ -86,9 +82,9 @@ export const useDocumentsStore = defineStore('documents', () => {
     })
   }
 
-  const getRecentDocuments = (limit = 5): ComplianceDocument[] => {
+  const getRecentDocuments = (limit = 5) => {
     return documents.value
-      .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime())
+      .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
       .slice(0, limit)
   }
 

@@ -19,6 +19,7 @@ export default defineNuxtConfig({
     azureClientId: process.env.AZURE_CLIENT_ID,
     azureClientSecret: process.env.AZURE_CLIENT_SECRET,
     azureTenantId: process.env.AZURE_TENANT_ID,
+    databaseUrl: process.env.DATABASE_URL,
     
     public: {
       appName: 'Compliance Q&A Agent',

@@ -8,6 +8,9 @@ export const useAuthStore = defineStore('auth', () => {
   const canAccessAudit = computed(() => 
     ['auditor', 'compliance_officer', 'admin'].includes(user.value?.role || '')
   )
+  const hasComplianceAccess = computed(() => 
+    ['compliance_officer', 'admin'].includes(user.value?.role || '')
+  )
 
   const login = async (credentials) => {
     try {
@@ -64,11 +67,15 @@ export const useAuthStore = defineStore('auth', () => {
 
   const fetchUser = async () => {
     try {
+      console.log('Fetching user from /api/auth/me')
       const response = await fetch('/api/auth/me')
+      console.log('Auth response status:', response.status)
       if (response.ok) {
         const data = await response.json()
+        console.log('User data received:', data)
         user.value = data
       } else {
+        console.log('Auth response not ok, clearing user')
         user.value = null
       }
     } catch (error) {
@@ -83,6 +90,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAdmin,
     isComplianceOfficer,
     canAccessAudit,
+    hasComplianceAccess,
     login,
     logout,
     fetchUser

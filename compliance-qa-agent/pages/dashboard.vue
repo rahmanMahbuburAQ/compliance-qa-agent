@@ -135,14 +135,23 @@
         <div class="compliance-card">
           <h2 class="text-lg font-semibold text-gray-900 mb-4">Recent Documents</h2>
           <div class="space-y-3">
-            <div v-for="doc in recentDocs" :key="doc.id" class="text-sm">
-              <button 
-                @click="viewDocument(doc)"
-                class="text-blue-600 hover:text-blue-800 underline block"
-              >
-                {{ doc.title }}
-              </button>
-              <span class="text-gray-500">v{{ doc.version }} • {{ doc.category }}</span>
+            <div v-if="documentsStore.isLoading" class="text-center py-4">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p class="mt-2 text-sm text-gray-600">Loading documents...</p>
+            </div>
+            <div v-else-if="recentDocs && recentDocs.length > 0">
+              <div v-for="doc in recentDocs" :key="doc.id" class="text-sm">
+                <button 
+                  @click="viewDocument(doc)"
+                  class="text-blue-600 hover:text-blue-800 underline block"
+                >
+                  {{ doc.title }}
+                </button>
+                <span class="text-gray-500">v{{ doc.version }} • {{ doc.category }}</span>
+              </div>
+            </div>
+            <div v-else class="text-sm text-gray-500">
+              No recent documents found.
             </div>
           </div>
         </div>
@@ -168,29 +177,9 @@ definePageMeta({
 const authStore = useAuthStore()
 const documentsStore = useDocumentsStore()
 
-const recentDocs = ref([
-  {
-    id: 'sec_policy_v2',
-    title: 'Security Policy',
-    version: '2.1',
-    category: 'Security',
-    url: '/documents/security-policy-v2.pdf'
-  },
-  {
-    id: 'data_handling_v1',
-    title: 'Data Handling Guidelines',
-    version: '1.3',
-    category: 'Data Protection',
-    url: '/documents/data-handling-v1.pdf'
-  },
-  {
-    id: 'privacy_policy_v3',
-    title: 'Privacy Policy',
-    version: '3.0',
-    category: 'Privacy',
-    url: '/documents/privacy-policy-v3.pdf'
-  }
-])
+const recentDocs = computed(() => {
+  return documentsStore.getRecentDocuments(3)
+})
 
 const reportIncident = () => {
   // In a real app, this would open an incident reporting form
@@ -201,10 +190,12 @@ const viewDocument = (document) => {
   window.open(document.url, '_blank')
 }
 
-// Fetch user data on mount
+// Fetch user data and documents on mount
 onMounted(() => {
   if (!authStore.user) {
     authStore.fetchUser()
   }
+  
+  documentsStore.fetchDocuments()
 })
 </script>

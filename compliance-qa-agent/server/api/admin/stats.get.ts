@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
       // Questions by category (last 30 days)
       questionsByCategory: [
         { category: 'Security', count: 45, percentage: 36.2 },
-        { category: 'Data Protection', count: 32, percentage: 25.8 },
+        { category: 'Data Protection22', count: 32, percentage: 25.8 },
         { category: 'Privacy', count: 28, percentage: 22.6 },
         { category: 'Compliance', count: 19, percentage: 15.4 }
       ],

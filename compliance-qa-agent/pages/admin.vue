@@ -1,7 +1,22 @@
 <template>
   <div class="space-y-6">
     <div class="compliance-card">
-      <h1 class="text-2xl font-bold text-gray-900 mb-6">Admin Dashboard</h1>
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+        <div class="flex space-x-3">
+          <button
+            type="button"
+            @click="goToDocuments"
+            class="btn-primary inline-flex items-center"
+          >
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Manage Documents
+          </button>
+        </div>
+      </div>
       
       <!-- Stats Overview -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -221,22 +236,14 @@ definePageMeta({
 
 const authStore = useAuthStore()
 
-// Check admin permissions
-if (!authStore.isAdmin && !authStore.isComplianceOfficer) {
-  throw createError({
-    statusCode: 403,
-    statusMessage: 'Access Denied: Admin or Compliance Officer access required'
-  })
-}
-
-const stats = ref<any>({})
+const stats = ref({})
 const loading = ref(false)
 
 const fetchStats = async () => {
   loading.value = true
   
   try {
-    const { data } = await $fetch('/api/admin/stats')
+    const data = await $fetch('/api/admin/stats')
     stats.value = data
   } catch (error) {
     console.error('Failed to fetch admin stats:', error)
@@ -263,8 +270,24 @@ const getRoleColor = (role) => {
   }
 }
 
-// Load stats on mount
+const goToDocuments = () => {
+  console.log('goToDocuments called')
+  console.log('Current user:', authStore.user)
+  console.log('isAdmin:', authStore.isAdmin)
+  console.log('isComplianceOfficer:', authStore.isComplianceOfficer)
+  
+  navigateTo('/admin/documents')
+}
+
+// Load stats on mount with auth check
 onMounted(() => {
+  // Check admin permissions after Pinia is initialized
+  if (!authStore.isAdmin && !authStore.isComplianceOfficer) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Access Denied: Admin or Compliance Officer access required'
+    })
+  }
   fetchStats()
 })
 </script>

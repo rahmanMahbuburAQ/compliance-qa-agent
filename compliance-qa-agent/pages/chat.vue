@@ -134,7 +134,12 @@ const commonQuestions = [
   'How do I report a security incident?',
   'What are approved file sharing methods?',
   'How long do we keep customer data?',
-  'Can I work with confidential data from home?'
+  'Can I work with confidential data from home?',
+  'What are the password requirements?',
+  'How many days can I work remotely?',
+  'When do I need to submit vacation requests?',
+  'Can I install personal software on company laptop?',
+  'What are standard working hours?'
 ]
 
 const submitQuestion = async () => {

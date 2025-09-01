@@ -13,7 +13,7 @@
         
         <div class="flex justify-center space-x-4">
           <NuxtLink 
-            v-if="authStore.isAuthenticated"
+            v-if="isAuthenticated"
             to="/dashboard"
             class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >
@@ -28,7 +28,7 @@
           </NuxtLink>
           
           <NuxtLink 
-            v-if="authStore.isAuthenticated"
+            v-if="isAuthenticated"
             to="/chat"
             class="bg-white text-blue-600 px-6 py-3 rounded-lg border border-blue-600 hover:bg-blue-50 transition-colors font-medium"
           >
@@ -140,15 +140,8 @@ definePageMeta({
 
 const authStore = useAuthStore()
 
-// Check auth status on mount
-onMounted(async () => {
-  const authCookie = useCookie('auth-token')
-  if (authCookie.value && !authStore.user) {
-    try {
-      await authStore.fetchUser()
-    } catch (error) {
-      // Token expired or invalid, ignore
-    }
-  }
+// Safely check if user is authenticated
+const isAuthenticated = computed(() => {
+  return authStore?.isAuthenticated || false
 })
 </script>

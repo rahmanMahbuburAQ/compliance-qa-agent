@@ -161,14 +161,6 @@ definePageMeta({
 
 const authStore = useAuthStore()
 
-// Check permissions
-if (!authStore.canAccessAudit) {
-  throw createError({
-    statusCode: 403,
-    statusMessage: 'Access Denied: Auditor access required'
-  })
-}
-
 const logs = ref([])
 const loading = ref(false)
 const totalLogs = ref(0)
@@ -196,12 +188,7 @@ const fetchLogs = async () => {
     if (filters.value.startDate) params.append('startDate', filters.value.startDate)
     if (filters.value.endDate) params.append('endDate', filters.value.endDate)
 
-    const { data } = await $fetch<{
-      logs
-      // total: number
-      // limit: number
-      // offset: number
-    }>(`/api/audit/logs?${params.toString()}`)
+    const data = await $fetch(`/api/audit/logs?${params.toString()}`)
 
     logs.value = data.logs
     totalLogs.value = data.total
@@ -280,8 +267,15 @@ const getActionBadgeClass = (action) => {
   }
 }
 
-// Load initial data
+// Load initial data with auth check
 onMounted(() => {
+  // Check permissions after Pinia is initialized
+  if (!authStore.canAccessAudit) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Access Denied: Auditor access required'
+    })
+  }
   fetchLogs()
 })
 </script>

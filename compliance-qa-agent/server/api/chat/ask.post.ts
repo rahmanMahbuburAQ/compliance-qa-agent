@@ -17,8 +17,15 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // Get relevant compliance documents (mock data for now)
+    console.log('=== Chat Ask Debug ===')
+    console.log('Question:', question)
+    console.log('User ID:', userId)
+    console.log('Anthropic API Key configured:', !!config.anthropicApiKey)
+    
+    // Get relevant compliance documents from database
     const relevantDocs = await getRelevantDocuments(question)
+    console.log('Found relevant docs:', relevantDocs.length)
+    console.log('Doc titles:', relevantDocs.map(d => d.title))
     
     // Create context from compliance documents
     const context = relevantDocs.map(doc => 
@@ -38,6 +45,11 @@ CRITICAL INSTRUCTIONS:
 Here are the relevant compliance documents:
 ${context}`
 
+    console.log('Attempting to call Claude API...')
+    console.log('Model: claude-3-haiku-20240307')
+    console.log('System prompt length:', systemPrompt.length)
+    console.log('Question:', question)
+    
     const response = await anthropic.messages.create({
       model: 'claude-3-haiku-20240307',
       max_tokens: 1000,
@@ -50,6 +62,8 @@ ${context}`
         }
       ]
     })
+    
+    console.log('Claude API call successful!')
 
     const answer = response.content[0].type === 'text' ? response.content[0].text : ''
     
@@ -73,11 +87,24 @@ ${context}`
     }
     
   } catch (error) {
-    console.error('Claude API Error:', error)
+    console.error('=== Claude API Error Details ===')
+    console.error('Error type:', error.constructor.name)
+    console.error('Error message:', error.message)
+    console.error('Error status:', error.status)
+    console.error('Error code:', error.code)
+    console.error('Full error:', error)
     
-    // Fallback to mock response if API fails
+    // Fallback to mock response if API fails, but use real database documents
     const relevantDocs = await getRelevantDocuments(question)
-    const fallbackAnswer = generateMockAnswer(question, relevantDocs)
+    
+    // Try to generate answer from database documents first
+    let fallbackAnswer = generateAnswerFromDocs(question, relevantDocs)
+    
+    // If no database answer, use mock answer
+    if (!fallbackAnswer) {
+      fallbackAnswer = generateMockAnswer(question, relevantDocs)
+    }
+    
     const confidence = calculateConfidence(question, relevantDocs, fallbackAnswer)
     
     console.log('Using fallback response due to API error')
@@ -92,54 +119,115 @@ ${context}`
 })
 
 async function getRelevantDocuments(question) {
-  // Mock compliance documents - replace with actual document retrieval
-  const mockDocuments = [
-    {
-      id: 'sec_policy_v2',
-      title: 'Security Policy',
-      version: '2.1',
-      category: 'Security',
-      url: '/documents/security-policy-v2.pdf',
-      lastUpdated: new Date('2024-01-15'),
-      sections: [
-        {
-          id: '5.1',
-          title: 'External File Sharing',
-          content: 'Sharing work files via personal email accounts (Gmail, Yahoo, etc.) is strictly prohibited. All external file sharing must use company-approved platforms: SharePoint, OneDrive for Business, or secure file transfer systems.',
-          sectionNumber: '5.1'
-        },
-        {
-          id: '5.2',
-          title: 'Approved Sharing Methods',
-          content: 'Employees must use SharePoint for document collaboration and OneDrive for Business for external sharing with proper permissions and access controls.',
-          sectionNumber: '5.2'
-        }
+  try {
+    console.log('=== Document Retrieval Debug ===')
+    console.log('Question for matching:', question)
+    
+    // Import database function
+    const { getAllDocuments } = await import('~/server/utils/database.js')
+    
+    // Get all documents from database
+    const allDocuments = await getAllDocuments()
+    console.log('Total documents in database:', allDocuments.length)
+    console.log('Available documents:', allDocuments.map(d => `${d.title} (${d.category})`).join(', '))
+    
+    // Enhanced keyword-based filtering
+    const questionLower = question.toLowerCase()
+    const questionWords = questionLower.split(' ').filter(word => word.length > 2) // Remove small words
+    
+    console.log('Question words:', questionWords)
+    
+    const relevantDocs = allDocuments.filter(doc => {
+      // Check if question keywords match document title, category, or section content
+      const titleMatch = questionWords.some(word => doc.title.toLowerCase().includes(word))
+      const categoryMatch = questionWords.some(word => doc.category.toLowerCase().includes(word))
+      const contentMatch = doc.sections.some(section => 
+        questionWords.some(word => 
+          section.title.toLowerCase().includes(word) ||
+          section.content.toLowerCase().includes(word)
+        )
+      )
+      
+      // Enhanced keyword matching for common compliance topics
+      const keywords = [
+        'email', 'share', 'file', 'security', 'data', 'privacy', 'access', 'password', 
+        'incident', 'remote', 'vpn', 'policy', 'work', 'days', 'hours', 'weekly',
+        'time', 'vacation', 'leave', 'hr', 'human', 'resources', 'employee',
+        'software', 'install', 'backup', 'travel', 'expense', 'office', 'facilities'
       ]
-    },
-    {
-      id: 'data_handling_v1',
-      title: 'Data Handling Guidelines',
-      version: '1.3',
-      category: 'Data Protection',
-      url: '/documents/data-handling-v1.pdf',
-      lastUpdated: new Date('2024-02-01'),
-      sections: [
-        {
-          id: '3.1',
-          title: 'Classification Levels',
-          content: 'All company data is classified as: Public, Internal, Confidential, or Restricted. Personal email cannot be used for Internal level and above.',
-          sectionNumber: '3.1'
-        }
-      ]
-    }
-  ]
+      
+      const keywordMatch = keywords.some(keyword => 
+        questionLower.includes(keyword) && (
+          doc.title.toLowerCase().includes(keyword) ||
+          doc.category.toLowerCase().includes(keyword) ||
+          doc.sections.some(s => s.content.toLowerCase().includes(keyword))
+        )
+      )
+      
+      const match = titleMatch || categoryMatch || contentMatch || keywordMatch
+      if (match) {
+        console.log(`Document "${doc.title}" matched because:`, {
+          titleMatch, categoryMatch, contentMatch, keywordMatch
+        })
+      }
+      
+      return match
+    })
+    
+    console.log('Relevant docs found:', relevantDocs.length)
+    
+    // If no specific matches, return all documents (they all contain compliance info)
+    const finalDocs = relevantDocs.length > 0 ? relevantDocs : allDocuments.slice(0, 3)
+    console.log('Final docs to use:', finalDocs.map(d => d.title))
+    
+    return finalDocs
+    
+  } catch (error) {
+    console.error('Error fetching documents from database:', error)
+    // Fallback to simplified mock data
+    return [{
+      id: 'fallback',
+      title: 'General Compliance Guidelines',
+      version: '1.0',
+      category: 'General',
+      sections: [{
+        content: 'Please refer to your company compliance documentation for specific guidance.'
+      }]
+    }]
+  }
+}
+
+function generateAnswerFromDocs(question, docs) {
+  // Try to find specific answers in the actual database documents
+  const questionLower = question.toLowerCase()
   
-  // Simple keyword matching - replace with vector search or better matching
-  return mockDocuments.filter(doc => 
-    question.toLowerCase().includes('email') || 
-    question.toLowerCase().includes('share') ||
-    question.toLowerCase().includes('file')
-  )
+  for (const doc of docs) {
+    for (const section of doc.sections) {
+      const sectionContent = section.content.toLowerCase()
+      
+      // Look for specific patterns in the question and match with document content
+      if ((questionLower.includes('days') || questionLower.includes('weekly')) && 
+          (questionLower.includes('remote') || questionLower.includes('work'))) {
+        
+        // Check if this section mentions days per week
+        if (sectionContent.includes('days per week') || sectionContent.includes('days out of')) {
+          return `According to ${doc.title} v${doc.version}, Section ${section.sectionNumber}, ${section.content}`
+        }
+      }
+      
+      // Add more specific question patterns here
+      if (questionLower.includes('password') && sectionContent.includes('password')) {
+        return `According to ${doc.title} v${doc.version}, Section ${section.sectionNumber}, ${section.content}`
+      }
+      
+      if ((questionLower.includes('email') || questionLower.includes('gmail')) && 
+          (sectionContent.includes('email') || sectionContent.includes('sharing'))) {
+        return `According to ${doc.title} v${doc.version}, Section ${section.sectionNumber}, ${section.content}`
+      }
+    }
+  }
+  
+  return null // No specific answer found in database documents
 }
 
 function generateMockAnswer(question, docs) {
@@ -158,8 +246,8 @@ function generateMockAnswer(question, docs) {
     return "According to our Security Incident Response procedures, all security incidents must be reported within 2 hours to the security team via the incident portal or emergency hotline."
   }
   
-  if (lowerQuestion.includes('remote') || lowerQuestion.includes('work from home')) {
-    return "Based on Acceptable Use Policy v3.0, Section 3.2, when working remotely, employees must ensure confidential data is accessed only through VPN connections and approved devices."
+  if (lowerQuestion.includes('remote') || lowerQuestion.includes('work from home') || lowerQuestion.includes('days') || lowerQuestion.includes('weekly')) {
+    return "According to Remote Work Policy v1.0, Section 1.1, employees are eligible to work remotely up to 2 days per week. Remote work schedules must be approved by your direct manager and documented in the HR system. The maximum allowed remote work is 2 days out of a standard 5-day work week."
   }
   
   // Default response

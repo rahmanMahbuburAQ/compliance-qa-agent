@@ -1,7 +1,11 @@
 export default defineNuxtRouteMiddleware((to) => {
   const authStore = useAuthStore()
   
+  console.log('Auth middleware - User:', authStore.user)
+  console.log('Auth middleware - isAuthenticated:', authStore.isAuthenticated)
+  
   if (!authStore.isAuthenticated) {
+    console.log('Not authenticated, redirecting to login')
     return navigateTo('/login')
   }
   
