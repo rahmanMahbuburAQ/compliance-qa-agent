@@ -139,7 +139,11 @@ const commonQuestions = [
   'How many days can I work remotely?',
   'When do I need to submit vacation requests?',
   'Can I install personal software on company laptop?',
-  'What are standard working hours?'
+  'What are standard working hours?',
+  'Do I need approval for meetings with other companies?',
+  'Can I accept gifts from clients or vendors?',
+  'What information can I share in external meetings?',
+  'How should I document meetings with competitors?'
 ]
 
 const submitQuestion = async () => {

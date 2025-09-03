@@ -27,6 +27,19 @@ export default defineEventHandler(async (event) => {
     console.log('Found relevant docs:', relevantDocs.length)
     console.log('Doc titles:', relevantDocs.map(d => d.title))
     
+    // DETAILED DEBUG: Log all sections for remote work questions
+    if (question.toLowerCase().includes('remote') || question.toLowerCase().includes('days')) {
+      console.log('=== REMOTE WORK DEBUG ===')
+      relevantDocs.forEach(doc => {
+        console.log(`Document: ${doc.title} (${doc.id})`)
+        doc.sections.forEach(section => {
+          console.log(`  Section ${section.sectionNumber}: ${section.title}`)
+          console.log(`  Content: ${section.content}`)
+        })
+      })
+      console.log('=== END REMOTE WORK DEBUG ===')
+    }
+    
     // Create context from compliance documents
     const context = relevantDocs.map(doc => 
       `Document: ${doc.title} (v${doc.version})\n${doc.sections.map(s => s.content).join('\n')}`
@@ -35,12 +48,13 @@ export default defineEventHandler(async (event) => {
     const systemPrompt = `You are a corporate compliance assistant. Your role is to provide accurate, helpful answers to compliance questions based ONLY on the provided company policies and procedures.
 
 CRITICAL INSTRUCTIONS:
-1. Answer ONLY based on the provided compliance documents
-2. Always cite specific policy sections (e.g., "According to Security Policy v2, Section 5.1...")
+1. Answer ONLY based on the provided compliance documents - DO NOT generate policy information
+2. Always cite specific policy sections exactly as they appear in the documents
 3. If information is not in the provided documents, state clearly that you cannot answer
 4. Be concise but thorough
 5. Highlight any prohibited actions clearly
-6. Suggest approved alternatives when applicable
+6. Use EXACT quotes from the provided documents - do not paraphrase or invent policy details
+7. DO NOT make up section numbers, policy versions, or content not explicitly provided
 
 Here are the relevant compliance documents:
 ${context}`
@@ -153,7 +167,9 @@ async function getRelevantDocuments(question) {
         'email', 'share', 'file', 'security', 'data', 'privacy', 'access', 'password', 
         'incident', 'remote', 'vpn', 'policy', 'work', 'days', 'hours', 'weekly',
         'time', 'vacation', 'leave', 'hr', 'human', 'resources', 'employee',
-        'software', 'install', 'backup', 'travel', 'expense', 'office', 'facilities'
+        'software', 'install', 'backup', 'travel', 'expense', 'office', 'facilities',
+        'meeting', 'external', 'company', 'client', 'vendor', 'competitor', 'antitrust',
+        'gift', 'entertainment', 'disclosure', 'confidential', 'authorization', 'approval'
       ]
       
       const keywordMatch = keywords.some(keyword => 
@@ -247,7 +263,7 @@ function generateMockAnswer(question, docs) {
   }
   
   if (lowerQuestion.includes('remote') || lowerQuestion.includes('work from home') || lowerQuestion.includes('days') || lowerQuestion.includes('weekly')) {
-    return "According to Remote Work Policy v1.0, Section 1.1, employees are eligible to work remotely up to 2 days per week. Remote work schedules must be approved by your direct manager and documented in the HR system. The maximum allowed remote work is 2 days out of a standard 5-day work week."
+    return "According to Remote Work Policy v1.0, Section 1.1, employees are eligible to work remotely up to 4 days per week. Remote work schedules must be approved by your direct manager and documented in the HR system. The maximum allowed remote work is 4 days out of a standard 5-day work week."
   }
   
   // Default response
