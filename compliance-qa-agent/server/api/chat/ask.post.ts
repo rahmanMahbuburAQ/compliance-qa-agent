@@ -193,7 +193,7 @@ async function getRelevantDocuments(question) {
     console.log('Relevant docs found:', relevantDocs.length)
     
     // If no specific matches, return all documents (they all contain compliance info)
-    const finalDocs = relevantDocs.length > 0 ? relevantDocs : allDocuments.slice(0, 3)
+    const finalDocs = relevantDocs.length > 0 ? relevantDocs : allDocuments
     console.log('Final docs to use:', finalDocs.map(d => d.title))
     
     return finalDocs

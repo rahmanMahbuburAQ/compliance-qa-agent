@@ -105,15 +105,36 @@ export async function getAllDocuments() {
 
     console.log(`Found ${documents.length} documents in database`);
 
-    return documents.map(doc => ({
-      id: doc.id,
-      title: doc.title,
-      version: doc.version,
-      category: doc.category,
-      url: doc.url,
-      lastUpdated: doc.last_updated,
-      sections: doc.sections && doc.sections !== '[null]' && typeof doc.sections === 'string' ? JSON.parse(doc.sections).filter(s => s !== null) : []
-    }));
+    return documents.map(doc => {
+      console.log(`Processing document ${doc.title}: sections type=${typeof doc.sections}, value=${doc.sections}`);
+      let sections = [];
+      
+      if (doc.sections) {
+        try {
+          if (typeof doc.sections === 'string') {
+            const parsed = JSON.parse(doc.sections);
+            sections = Array.isArray(parsed) ? parsed.filter(s => s !== null) : [];
+          } else if (Array.isArray(doc.sections)) {
+            sections = doc.sections.filter(s => s !== null);
+          }
+        } catch (e) {
+          console.error(`Error parsing sections for ${doc.title}:`, e);
+          sections = [];
+        }
+      }
+      
+      console.log(`Document ${doc.title} has ${sections.length} sections`);
+      
+      return {
+        id: doc.id,
+        title: doc.title,
+        version: doc.version,
+        category: doc.category,
+        url: doc.url,
+        lastUpdated: doc.last_updated,
+        sections
+      };
+    });
   } catch (error) {
     console.error('Database query failed, using mock data:', error.message);
     console.error('Full error:', error);
